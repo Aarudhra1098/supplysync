@@ -1,7 +1,7 @@
 "use client";
 
 import { formatINR } from "@/lib/format";
-import { ShoppingCart, Check } from "lucide-react";
+import { ShoppingCart, Check, Minus, Plus } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -9,17 +9,19 @@ interface ProductBlockProps {
   id: string;
   materialName: string;
   supplierName: string;
+  supplierCity?: string;
   stockQty: number;
   unit: string;
   pricePerUnit: number;
   imageUrl?: string;
-  onAddToCart: () => void;
+  onAddToCart: (quantity: number) => void;
 }
 
 export default function ProductBlock({
   id,
   materialName,
   supplierName,
+  supplierCity,
   stockQty,
   unit,
   pricePerUnit,
@@ -27,15 +29,22 @@ export default function ProductBlock({
   onAddToCart,
 }: ProductBlockProps) {
   const [justAdded, setJustAdded] = useState(false);
+  const [quantity, setQuantity] = useState(1);
   const isOutOfStock = stockQty <= 0;
   const isLowStock = stockQty > 0 && stockQty <= 20;
 
   const handleAdd = () => {
     if (isOutOfStock) return;
-    onAddToCart();
+    onAddToCart(quantity);
     setJustAdded(true);
-    setTimeout(() => setJustAdded(false), 1500);
+    setTimeout(() => {
+      setJustAdded(false);
+      setQuantity(1);
+    }, 1500);
   };
+
+  const incrementQty = () => setQuantity(q => Math.min(q + 1, stockQty));
+  const decrementQty = () => setQuantity(q => Math.max(q - 1, 1));
 
   return (
     <motion.div
@@ -66,7 +75,10 @@ export default function ProductBlock({
       {/* Content */}
       <div className="p-4 flex flex-col flex-1">
         <h3 className="font-jakarta font-semibold text-heading text-[15px] leading-tight mb-1">{materialName}</h3>
-        <p className="text-subtle text-xs mb-3">{supplierName}</p>
+        <p className="text-subtle text-xs mb-1">{supplierName}</p>
+        {supplierCity && (
+          <p className="text-subtle text-xs mb-2">📍 {supplierCity}</p>
+        )}
 
         {/* Stock info */}
         <div className="mb-3">
@@ -80,10 +92,50 @@ export default function ProductBlock({
         </div>
 
         {/* Price */}
-        <div className="mt-auto mb-3">
+        <div className="mb-3">
           <span className="price-tag text-xl text-buyer font-bold">{formatINR(pricePerUnit)}</span>
           <span className="text-subtle text-xs ml-1">/{unit}</span>
         </div>
+
+        {/* Quantity Selector — Slider + Stepper */}
+        {!isOutOfStock && !justAdded && (
+          <div className="mb-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-muted uppercase tracking-wider">Qty</label>
+              <span className="text-xs text-muted tabular-nums">
+                Total: <span className="font-semibold text-heading">{formatINR(pricePerUnit * quantity)}</span>
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={decrementQty}
+                disabled={quantity <= 1}
+                className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center text-body hover:bg-gray-200 disabled:opacity-30 transition-colors"
+              >
+                <Minus className="w-3 h-3" />
+              </button>
+              <input
+                type="range"
+                min={1}
+                max={stockQty}
+                value={quantity}
+                onChange={(e) => setQuantity(Number(e.target.value))}
+                className="flex-1 accent-buyer h-1.5"
+                id={`qty-slider-${id}`}
+              />
+              <button
+                onClick={incrementQty}
+                disabled={quantity >= stockQty}
+                className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center text-body hover:bg-gray-200 disabled:opacity-30 transition-colors"
+              >
+                <Plus className="w-3 h-3" />
+              </button>
+              <span className="w-12 text-center font-semibold text-heading tabular-nums text-sm bg-gray-50 rounded-lg py-1">
+                {quantity}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Add to Cart */}
         <AnimatePresence mode="wait">
@@ -105,12 +157,12 @@ export default function ProductBlock({
               {justAdded ? (
                 <>
                   <Check className="w-4 h-4" />
-                  Added ✓
+                  Added {quantity} {unit} ✓
                 </>
               ) : (
                 <>
                   <ShoppingCart className="w-4 h-4" />
-                  Add to Cart
+                  Add {quantity} {unit} to Cart
                 </>
               )}
             </motion.button>

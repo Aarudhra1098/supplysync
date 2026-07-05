@@ -9,7 +9,7 @@ const router = Router();
 router.patch('/me', requireAuth, async (req: Request, res: Response): Promise<void> => {
   try {
     const { uid } = req.firebaseUser!;
-    const { business_type, business_name, phone, latitude, longitude, address_text, role } = req.body;
+    const { business_type, business_name, phone, latitude, longitude, address_text, city, role } = req.body;
 
     // Fetch existing user to check if role is already set
     const existingUser = await prisma.users.findUnique({
@@ -28,6 +28,7 @@ router.patch('/me', requireAuth, async (req: Request, res: Response): Promise<vo
       latitude,
       longitude,
       address_text,
+      city,
     };
 
     // Set role only if it hasn't been set yet

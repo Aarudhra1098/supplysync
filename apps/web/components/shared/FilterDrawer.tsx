@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { X, SlidersHorizontal } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatINR } from "@/lib/format";
@@ -11,6 +10,9 @@ interface FilterDrawerProps {
   categories: string[];
   selectedCategory: string;
   onCategoryChange: (cat: string) => void;
+  cities?: string[];
+  selectedCity?: string;
+  onCityChange?: (city: string) => void;
   priceRange: [number, number];
   onPriceRangeChange: (range: [number, number]) => void;
   maxPrice: number;
@@ -24,6 +26,9 @@ export default function FilterDrawer({
   categories,
   selectedCategory,
   onCategoryChange,
+  cities,
+  selectedCity,
+  onCityChange,
   priceRange,
   onPriceRangeChange,
   maxPrice,
@@ -89,6 +94,34 @@ export default function FilterDrawer({
                   ))}
                 </div>
               </div>
+
+              {/* City */}
+              {cities && cities.length > 0 && onCityChange && (
+                <div>
+                  <label className="text-xs font-semibold text-muted uppercase tracking-wider mb-3 block">City</label>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => onCityChange("")}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                        !selectedCity ? "bg-buyer text-white" : "bg-gray-100 text-body hover:bg-gray-200"
+                      }`}
+                    >
+                      All Cities
+                    </button>
+                    {cities.map(city => (
+                      <button
+                        key={city}
+                        onClick={() => onCityChange(city)}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                          selectedCity === city ? "bg-buyer text-white" : "bg-gray-100 text-body hover:bg-gray-200"
+                        }`}
+                      >
+                        📍 {city}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Price Range */}
               <div>

@@ -56,6 +56,7 @@ model users {
   latitude            Float?               @db.DoublePrecision
   longitude           Float?               @db.DoublePrecision
   address_text        String?
+  city                String?
   verification_status verification_status? @default(unverified)
   trust_score         Decimal?             @default(50.00) @db.Decimal(4, 2)
   created_at          DateTime?            @default(now()) @db.Timestamptz(6)

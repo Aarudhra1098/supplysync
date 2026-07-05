@@ -15,6 +15,7 @@ interface Listing {
   id: string;
   supplier_id: string;
   supplier_name: string;
+  supplier_city?: string;
   material_name: string;
   category: string | null;
   stock_qty: number;
@@ -30,8 +31,9 @@ export default function MarketplacePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
-  const [appliedFilters, setAppliedFilters] = useState({ category: "", priceRange: [0, 10000] as [number, number] });
+  const [appliedFilters, setAppliedFilters] = useState({ category: "", city: "", priceRange: [0, 10000] as [number, number] });
   const { addItem } = useCart();
   const { showToast } = useToast();
 
@@ -54,17 +56,22 @@ export default function MarketplacePage() {
     return Array.from(new Set(listings.map(l => l.category).filter(Boolean))) as string[];
   }, [listings]);
 
+  const allCities = useMemo(() => {
+    return Array.from(new Set(listings.map(l => l.supplier_city).filter(Boolean))) as string[];
+  }, [listings]);
+
   // Filter results
   const filteredListings = useMemo(() => {
     return listings.filter(listing => {
       const matchesSearch = !searchQuery || listing.material_name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = !appliedFilters.category || listing.category === appliedFilters.category;
+      const matchesCity = !appliedFilters.city || listing.supplier_city === appliedFilters.city;
       const matchesPrice = Number(listing.price_per_unit) >= appliedFilters.priceRange[0] && Number(listing.price_per_unit) <= appliedFilters.priceRange[1];
-      return matchesSearch && matchesCategory && matchesPrice;
+      return matchesSearch && matchesCategory && matchesCity && matchesPrice;
     });
   }, [listings, searchQuery, appliedFilters]);
 
-  const handleAddToCart = (listing: Listing) => {
+  const handleAddToCart = (listing: Listing, quantity: number) => {
     addItem({
       listingId: listing.id,
       materialName: listing.material_name,
@@ -73,18 +80,20 @@ export default function MarketplacePage() {
       unitPrice: Number(listing.price_per_unit),
       unit: listing.unit,
       availableStock: Number(listing.stock_qty),
+      quantity,
     });
-    showToast(`${listing.material_name} added to cart`, "success");
+    showToast(`${quantity} ${listing.unit} of ${listing.material_name} added to cart`, "success");
   };
 
   const handleApplyFilters = () => {
-    setAppliedFilters({ category: selectedCategory, priceRange });
+    setAppliedFilters({ category: selectedCategory, city: selectedCity, priceRange });
   };
 
   const handleClearFilters = () => {
     setSelectedCategory("");
+    setSelectedCity("");
     setPriceRange([0, 10000]);
-    setAppliedFilters({ category: "", priceRange: [0, 10000] });
+    setAppliedFilters({ category: "", city: "", priceRange: [0, 10000] });
   };
 
   if (isLoading) {
@@ -151,11 +160,12 @@ export default function MarketplacePage() {
                 id={listing.id}
                 materialName={listing.material_name}
                 supplierName={listing.supplier_name}
+                supplierCity={listing.supplier_city}
                 stockQty={Number(listing.stock_qty)}
                 unit={listing.unit}
                 pricePerUnit={Number(listing.price_per_unit)}
                 imageUrl={listing.image_url}
-                onAddToCart={() => handleAddToCart(listing)}
+                onAddToCart={(qty) => handleAddToCart(listing, qty)}
               />
             </motion.div>
           ))}
@@ -169,6 +179,9 @@ export default function MarketplacePage() {
         categories={allCategories}
         selectedCategory={selectedCategory}
         onCategoryChange={setSelectedCategory}
+        cities={allCities}
+        selectedCity={selectedCity}
+        onCityChange={setSelectedCity}
         priceRange={priceRange}
         onPriceRangeChange={setPriceRange}
         maxPrice={10000}

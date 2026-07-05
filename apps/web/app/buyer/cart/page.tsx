@@ -2,6 +2,7 @@
 
 import { useCart } from "@/lib/cart-context";
 import { useToast } from "@/lib/toast-context";
+import { fetchApi } from "@/lib/api-client";
 import { formatINR } from "@/lib/format";
 import ElevatedCard from "@/components/shared/ElevatedCard";
 import EmptyState from "@/components/shared/EmptyState";
@@ -22,19 +23,33 @@ export default function CartPage() {
     setIsCheckingOut(true);
 
     try {
-      // Group items by supplier
-      const supplierGroups = items.reduce((acc, item) => {
-        if (!acc[item.supplierId]) acc[item.supplierId] = [];
-        acc[item.supplierId].push(item);
-        return acc;
-      }, {} as Record<string, typeof items>);
+      // Create one order per cart item via the real API
+      const results = await Promise.allSettled(
+        items.map(item =>
+          fetchApi("/orders", {
+            method: "POST",
+            body: JSON.stringify({
+              listing_id: item.listingId,
+              quantity: item.quantity,
+            }),
+          })
+        )
+      );
 
-      // In production: fire one POST /orders per supplier group
-      // For now, simulate success
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const failures = results.filter(r => r.status === "rejected");
+
+      if (failures.length > 0 && failures.length < items.length) {
+        // Partial success
+        showToast(`${items.length - failures.length} order(s) placed. ${failures.length} failed (possibly out of stock).`, "info");
+      } else if (failures.length === items.length) {
+        showToast("All orders failed. Please check stock availability.", "error");
+        setIsCheckingOut(false);
+        return;
+      } else {
+        showToast("All orders placed successfully! 🎉", "success");
+      }
 
       clearCart();
-      showToast("Order placed successfully! 🎉", "success");
       router.push("/buyer/orders");
     } catch (error) {
       showToast("Checkout failed. Please try again.", "error");

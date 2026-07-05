@@ -47,6 +47,7 @@ router.get('/browse', requireAuth, async (req: Request, res: Response) => {
   try {
     const search = (req.query.search as string) || '';
     const category = (req.query.category as string) || '';
+    const city = (req.query.city as string) || '';
 
     const whereClause: any = {};
     if (search) {
@@ -54,6 +55,9 @@ router.get('/browse', requireAuth, async (req: Request, res: Response) => {
     }
     if (category) {
       whereClause.category = category;
+    }
+    if (city) {
+      whereClause.users = { city: { equals: city, mode: 'insensitive' } };
     }
 
     const listings = await prisma.listings.findMany({
@@ -65,6 +69,7 @@ router.get('/browse', requireAuth, async (req: Request, res: Response) => {
             display_name: true,
             business_name: true,
             trust_score: true,
+            city: true,
           },
         },
       },
@@ -76,6 +81,7 @@ router.get('/browse', requireAuth, async (req: Request, res: Response) => {
       id: l.id,
       supplier_id: l.supplier_id,
       supplier_name: l.users.business_name || l.users.display_name || 'Unknown Supplier',
+      supplier_city: l.users.city || null,
       material_name: l.material_name,
       category: l.category,
       stock_qty: l.stock_qty,

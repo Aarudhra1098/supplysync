@@ -20,6 +20,7 @@ export default function SelectRolePage() {
     businessName: "",
     phone: "",
     address: "",
+    city: "",
     lat: 0,
     lng: 0,
   });
@@ -45,9 +46,10 @@ export default function SelectRolePage() {
           full_name: form.fullName,
           business_name: form.businessName,
           phone: form.phone,
-          address: form.address,
-          lat: form.lat,
-          lng: form.lng,
+          address_text: form.address,
+          city: form.city,
+          latitude: form.lat,
+          longitude: form.lng,
         }),
       });
       router.push(`/${selectedRole}/dashboard`);
@@ -216,11 +218,27 @@ export default function SelectRolePage() {
                     type="text"
                     required
                     placeholder="Enter your full address"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 text-heading text-sm placeholder:text-subtle focus:border-buyer focus:ring-2 focus:ring-buyer-ring outline-none transition-all mb-3"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 text-heading text-sm placeholder:text-subtle focus:border-buyer focus:ring-2 focus:ring-buyer-ring outline-none transition-all"
                     id="signup-address"
                     onChange={e => setForm({ ...form, address: e.target.value })}
                   />
+                </div>
 
+                {/* City */}
+                <div>
+                  <label className="text-xs font-semibold text-muted uppercase tracking-wider mb-1.5 block">
+                    <MapPin className="inline w-3.5 h-3.5 mr-1 -mt-0.5" />
+                    City
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={form.city}
+                    onChange={e => setForm({ ...form, city: e.target.value })}
+                    placeholder="e.g. Hyderabad"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 text-heading text-sm placeholder:text-subtle focus:border-buyer focus:ring-2 focus:ring-buyer-ring outline-none transition-all"
+                    id="signup-city"
+                  />
                 </div>
 
                 {/* Submit */}
