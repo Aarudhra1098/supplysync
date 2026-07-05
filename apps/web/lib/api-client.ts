@@ -25,6 +25,7 @@ export async function fetchApi<T = any>(
   }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    cache: 'no-store', // Disable caching globally for realtime updates
     ...options,
     headers,
   });
@@ -51,6 +52,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   const baseUrl = process.env.NODE_ENV === 'production' ? 'https://supplysync-uizo.onrender.com/api' : (process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api');
 
   const res = await fetch(`${baseUrl}${path}`, {
+    cache: 'no-store', // Disable caching globally for realtime updates
     ...options,
     headers: {
       "Content-Type": "application/json",

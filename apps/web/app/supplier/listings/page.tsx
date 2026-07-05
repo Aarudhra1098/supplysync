@@ -33,7 +33,9 @@ export default function SupplierListingsPage() {
 
   const loadListings = useCallback(async () => {
     try {
-      const data = await fetchApi<Listing[]>("/listings/mine");
+      const data = await fetchApi<Listing[]>("/listings/mine", {
+        cache: "no-store",
+      });
       setListings(data);
     } catch (err: any) {
       showToast(err.message || "Failed to load listings", "error");

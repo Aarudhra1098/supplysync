@@ -39,7 +39,9 @@ export default function MarketplacePage() {
 
   const loadListings = useCallback(async () => {
     try {
-      const data = await fetchApi<Listing[]>("/listings/browse");
+      const data = await fetchApi<Listing[]>("/listings/browse", {
+        cache: "no-store",
+      });
       setListings(data);
     } catch (err: any) {
       console.error("Failed to load listings:", err);
