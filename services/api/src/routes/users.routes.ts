@@ -2,7 +2,6 @@ import { Router, Request, Response } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import prisma from '../utils/prisma.js';
 import { successResponse, errorResponse } from '../utils/responseEnvelope.js';
-import { user_role, business_type } from '@prisma/client';
 
 const router = Router();
 
@@ -22,7 +21,7 @@ router.patch('/me', requireAuth, async (req: Request, res: Response): Promise<vo
     }
 
     const updateData: any = {
-      business_type: business_type as business_type | undefined,
+      business_type: business_type as any | undefined,
       business_name,
       phone,
       latitude,
@@ -34,7 +33,7 @@ router.patch('/me', requireAuth, async (req: Request, res: Response): Promise<vo
     // Set role only if it hasn't been set yet
     if (!existingUser.role && role) {
       if (role === 'buyer' || role === 'supplier') {
-        updateData.role = role as user_role;
+        updateData.role = role as any;
       } else {
         res.status(400).json(errorResponse('INVALID_INPUT', 'Role must be buyer or supplier'));
         return;

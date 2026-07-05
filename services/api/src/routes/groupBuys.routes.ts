@@ -2,7 +2,6 @@ import { Router, Request, Response } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import prisma from '../utils/prisma.js';
 import { successResponse, errorResponse } from '../utils/responseEnvelope.js';
-import { group_buy_status } from '@prisma/client';
 
 const router = Router();
 
