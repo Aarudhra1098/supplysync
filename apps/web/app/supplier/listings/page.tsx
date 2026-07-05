@@ -29,6 +29,7 @@ export default function SupplierListingsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ material_name: "", category: "", stock_qty: "", unit: "kg", price_per_unit: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   const { showToast } = useToast();
 
   const loadListings = useCallback(async () => {
@@ -51,6 +52,7 @@ export default function SupplierListingsPage() {
   const openNewModal = () => {
     setFormData({ material_name: "", category: "", stock_qty: "", unit: "kg", price_per_unit: "" });
     setEditingId(null);
+    setHasSubmitted(false);
     setIsModalOpen(true);
   };
 
@@ -63,11 +65,19 @@ export default function SupplierListingsPage() {
       price_per_unit: String(listing.price_per_unit),
     });
     setEditingId(listing.id);
+    setHasSubmitted(false);
     setIsModalOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setHasSubmitted(true);
+    
+    // Validate empty fields
+    if (!formData.material_name.trim() || !formData.category.trim() || !formData.stock_qty || !formData.price_per_unit) {
+      return;
+    }
+    
     setIsSubmitting(true);
 
     try {
@@ -245,7 +255,11 @@ export default function SupplierListingsPage() {
                     required
                     value={formData.material_name}
                     onChange={e => setFormData({ ...formData, material_name: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-heading text-sm focus:border-supplier focus:ring-2 focus:ring-supplier-ring outline-none"
+                    className={`w-full px-4 py-2.5 rounded-xl border text-heading text-sm outline-none transition-all ${
+                      hasSubmitted && !formData.material_name.trim()
+                        ? "border-red-500 bg-red-50 dark:bg-red-900/20 text-red-900 placeholder:text-red-400 focus:ring-2 focus:ring-red-200"
+                        : "border-gray-200 focus:border-supplier focus:ring-2 focus:ring-supplier-ring dark:border-slate-700 dark:bg-slate-800"
+                    }`}
                     placeholder="e.g. Portland Cement OPC 53"
                   />
                 </div>
@@ -257,7 +271,11 @@ export default function SupplierListingsPage() {
                       required
                       value={formData.category}
                       onChange={e => setFormData({ ...formData, category: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-heading text-sm focus:border-supplier focus:ring-2 focus:ring-supplier-ring outline-none"
+                      className={`w-full px-4 py-2.5 rounded-xl border text-heading text-sm outline-none transition-all ${
+                        hasSubmitted && !formData.category.trim()
+                          ? "border-red-500 bg-red-50 dark:bg-red-900/20 text-red-900 placeholder:text-red-400 focus:ring-2 focus:ring-red-200"
+                          : "border-gray-200 focus:border-supplier focus:ring-2 focus:ring-supplier-ring dark:border-slate-700 dark:bg-slate-800"
+                      }`}
                       placeholder="e.g. Cement"
                     />
                   </div>
@@ -286,7 +304,11 @@ export default function SupplierListingsPage() {
                       min="0"
                       value={formData.stock_qty}
                       onChange={e => setFormData({ ...formData, stock_qty: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-heading text-sm focus:border-supplier focus:ring-2 focus:ring-supplier-ring outline-none tabular-nums"
+                      className={`w-full px-4 py-2.5 rounded-xl border text-heading text-sm outline-none tabular-nums transition-all ${
+                        hasSubmitted && !formData.stock_qty
+                          ? "border-red-500 bg-red-50 dark:bg-red-900/20 text-red-900 placeholder:text-red-400 focus:ring-2 focus:ring-red-200"
+                          : "border-gray-200 focus:border-supplier focus:ring-2 focus:ring-supplier-ring dark:border-slate-700 dark:bg-slate-800"
+                      }`}
                       placeholder="0"
                     />
                   </div>
@@ -299,7 +321,11 @@ export default function SupplierListingsPage() {
                       step="0.01"
                       value={formData.price_per_unit}
                       onChange={e => setFormData({ ...formData, price_per_unit: e.target.value })}
-                      className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-heading text-sm focus:border-supplier focus:ring-2 focus:ring-supplier-ring outline-none tabular-nums"
+                      className={`w-full px-4 py-2.5 rounded-xl border text-heading text-sm outline-none tabular-nums transition-all ${
+                        hasSubmitted && !formData.price_per_unit
+                          ? "border-red-500 bg-red-50 dark:bg-red-900/20 text-red-900 placeholder:text-red-400 focus:ring-2 focus:ring-red-200"
+                          : "border-gray-200 focus:border-supplier focus:ring-2 focus:ring-supplier-ring dark:border-slate-700 dark:bg-slate-800"
+                      }`}
                       placeholder="0.00"
                     />
                   </div>

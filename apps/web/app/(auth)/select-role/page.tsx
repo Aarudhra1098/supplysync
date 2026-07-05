@@ -12,6 +12,7 @@ import Link from "next/link";
 export default function SelectRolePage() {
   const [selectedRole, setSelectedRole] = useState<"buyer" | "supplier" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   const [step, setStep] = useState<1 | 2>(1); // 1 = role select, 2 = details form
   const router = useRouter();
 
@@ -35,7 +36,15 @@ export default function SelectRolePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setHasSubmitted(true);
+    
     if (!selectedRole) return;
+    
+    // Check if any required field is empty
+    if (!form.fullName.trim() || !form.businessName.trim() || !form.phone.trim() || !form.city.trim() || !form.address.trim()) {
+      return;
+    }
+    
     setIsSubmitting(true);
 
     try {
@@ -165,7 +174,11 @@ export default function SelectRolePage() {
                       value={form.fullName}
                       onChange={e => setForm({ ...form, fullName: e.target.value })}
                       placeholder="Your full name"
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 text-heading text-sm placeholder:text-subtle focus:border-buyer focus:ring-2 focus:ring-buyer-ring outline-none transition-all"
+                      className={`w-full pl-10 pr-4 py-3 rounded-xl border text-heading text-sm outline-none transition-all ${
+                        hasSubmitted && !form.fullName.trim() 
+                          ? "border-red-500 bg-red-50 dark:bg-red-900/20 text-red-900 placeholder:text-red-400 focus:ring-2 focus:ring-red-200" 
+                          : "border-gray-200 placeholder:text-subtle focus:border-buyer focus:ring-2 focus:ring-buyer-ring dark:border-slate-700 dark:bg-slate-800"
+                      }`}
                       id="signup-fullname"
                     />
                   </div>
@@ -182,7 +195,11 @@ export default function SelectRolePage() {
                       value={form.businessName}
                       onChange={e => setForm({ ...form, businessName: e.target.value })}
                       placeholder="Your company / shop name"
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 text-heading text-sm placeholder:text-subtle focus:border-buyer focus:ring-2 focus:ring-buyer-ring outline-none transition-all"
+                      className={`w-full pl-10 pr-4 py-3 rounded-xl border text-heading text-sm outline-none transition-all ${
+                        hasSubmitted && !form.businessName.trim() 
+                          ? "border-red-500 bg-red-50 dark:bg-red-900/20 text-red-900 placeholder:text-red-400 focus:ring-2 focus:ring-red-200" 
+                          : "border-gray-200 placeholder:text-subtle focus:border-buyer focus:ring-2 focus:ring-buyer-ring dark:border-slate-700 dark:bg-slate-800"
+                      }`}
                       id="signup-business"
                     />
                   </div>
@@ -198,8 +215,12 @@ export default function SelectRolePage() {
                       required
                       value={form.phone}
                       onChange={e => setForm({ ...form, phone: e.target.value })}
-                      placeholder="+91 XXXXX XXXXX"
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 text-heading text-sm placeholder:text-subtle focus:border-buyer focus:ring-2 focus:ring-buyer-ring outline-none transition-all"
+                      placeholder="10-digit mobile number"
+                      className={`w-full pl-10 pr-4 py-3 rounded-xl border text-heading text-sm outline-none transition-all ${
+                        hasSubmitted && !form.phone.trim() 
+                          ? "border-red-500 bg-red-50 dark:bg-red-900/20 text-red-900 placeholder:text-red-400 focus:ring-2 focus:ring-red-200" 
+                          : "border-gray-200 placeholder:text-subtle focus:border-buyer focus:ring-2 focus:ring-buyer-ring dark:border-slate-700 dark:bg-slate-800"
+                      }`}
                       id="signup-phone"
                     />
                   </div>
@@ -216,7 +237,11 @@ export default function SelectRolePage() {
                     type="text"
                     required
                     placeholder="Enter your full address"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 text-heading text-sm placeholder:text-subtle focus:border-buyer focus:ring-2 focus:ring-buyer-ring outline-none transition-all"
+                    className={`w-full px-4 py-3 rounded-xl border text-heading text-sm outline-none transition-all ${
+                        hasSubmitted && !form.address.trim() 
+                          ? "border-red-500 bg-red-50 dark:bg-red-900/20 text-red-900 placeholder:text-red-400 focus:ring-2 focus:ring-red-200" 
+                          : "border-gray-200 placeholder:text-subtle focus:border-buyer focus:ring-2 focus:ring-buyer-ring dark:border-slate-700 dark:bg-slate-800"
+                      }`}
                     id="signup-address"
                     onChange={e => setForm({ ...form, address: e.target.value })}
                   />
@@ -233,8 +258,12 @@ export default function SelectRolePage() {
                     required
                     value={form.city}
                     onChange={e => setForm({ ...form, city: e.target.value })}
-                    placeholder="e.g. Hyderabad"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 text-heading text-sm placeholder:text-subtle focus:border-buyer focus:ring-2 focus:ring-buyer-ring outline-none transition-all"
+                    placeholder="e.g. Mumbai"
+                    className={`w-full pl-10 pr-4 py-3 rounded-xl border text-heading text-sm outline-none transition-all ${
+                        hasSubmitted && !form.city.trim() 
+                          ? "border-red-500 bg-red-50 dark:bg-red-900/20 text-red-900 placeholder:text-red-400 focus:ring-2 focus:ring-red-200" 
+                          : "border-gray-200 placeholder:text-subtle focus:border-buyer focus:ring-2 focus:ring-buyer-ring dark:border-slate-700 dark:bg-slate-800"
+                      }`}
                     id="signup-city"
                   />
                 </div>
