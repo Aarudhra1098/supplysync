@@ -250,10 +250,15 @@ router.delete('/:id', requireAuth, requireSupplier, async (req: Request, res: Re
       return;
     }
 
+    // Delete associated orders first to satisfy foreign key constraints (prototype workaround)
+    await prisma.orders.deleteMany({ where: { listing_id: id } });
+    
+    // Now delete the listing
     await prisma.listings.delete({ where: { id } });
     res.json(successResponse({ deleted: true }));
-  } catch (error) {
-    res.status(500).json(errorResponse('INTERNAL_SERVER_ERROR', 'Failed to delete listing'));
+  } catch (error: any) {
+    console.error("Delete Listing Error:", error);
+    res.status(500).json(errorResponse('INTERNAL_SERVER_ERROR', error.message || 'Failed to delete listing'));
   }
 });
 
