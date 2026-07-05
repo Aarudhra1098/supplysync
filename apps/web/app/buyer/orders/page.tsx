@@ -1,30 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { fetchApi } from "@/lib/api-client";
 import { formatINR } from "@/lib/format";
 import ElevatedCard from "@/components/shared/ElevatedCard";
 import StatusPill from "@/components/shared/StatusPill";
 import EmptyState from "@/components/shared/EmptyState";
+import SkeletonLoader from "@/components/shared/SkeletonLoader";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ShoppingBag, Eye } from "lucide-react";
 
 interface Order {
   id: string;
-  material_name: string;
-  supplier_name: string;
   quantity: number;
   total_price: number;
   status: "pending" | "confirmed" | "in_transit" | "delivered" | "cancelled";
   created_at: string;
+  listings: {
+    material_name: string;
+    unit: string;
+  };
+  users_supplier: {
+    display_name: string | null;
+    business_name: string | null;
+  };
 }
-
-const demoOrders: Order[] = [
-  { id: "ord-001", material_name: "Portland Cement (OPC 53)", supplier_name: "Shree Industries", quantity: 50, total_price: 18500, status: "in_transit", created_at: "2026-07-02T10:00:00Z" },
-  { id: "ord-002", material_name: "TMT Steel Bars (12mm)", supplier_name: "Vizag Steel Traders", quantity: 100, total_price: 62000, status: "delivered", created_at: "2026-06-28T09:00:00Z" },
-  { id: "ord-003", material_name: "River Sand (Fine)", supplier_name: "Godavari Sand Works", quantity: 200, total_price: 14000, status: "delivered", created_at: "2026-06-20T11:00:00Z" },
-  { id: "ord-004", material_name: "Red Clay Bricks", supplier_name: "Lakshmi Bricks", quantity: 1000, total_price: 8000, status: "cancelled", created_at: "2026-06-15T08:00:00Z" },
-];
 
 const statusTabs = ["all", "pending", "confirmed", "in_transit", "delivered", "cancelled"] as const;
 const tabLabels: Record<string, string> = {
@@ -37,11 +38,31 @@ const tabLabels: Record<string, string> = {
 };
 
 export default function BuyerOrdersPage() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>("all");
 
+  const loadOrders = useCallback(async () => {
+    try {
+      const data = await fetchApi<Order[]>("/orders/mine");
+      setOrders(data);
+    } catch (err: any) {
+      console.error("Failed to load orders:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
+
   const filteredOrders = activeTab === "all"
-    ? demoOrders
-    : demoOrders.filter(o => o.status === activeTab);
+    ? orders
+    : orders.filter(o => o.status === activeTab);
+
+  const getSupplierName = (order: Order) =>
+    order.users_supplier?.business_name || order.users_supplier?.display_name || "Unknown Supplier";
 
   return (
     <div id="buyer-orders">
@@ -71,11 +92,15 @@ export default function BuyerOrdersPage() {
       </div>
 
       {/* Orders List */}
-      {filteredOrders.length === 0 ? (
+      {isLoading ? (
+        <SkeletonLoader count={4} type="row" />
+      ) : filteredOrders.length === 0 ? (
         <EmptyState
           icon={ShoppingBag}
           title={`No ${activeTab === "all" ? "" : tabLabels[activeTab].toLowerCase() + " "}orders`}
-          description="Orders matching this filter will appear here."
+          description={orders.length === 0 ? "Place your first order from the marketplace!" : "Orders matching this filter will appear here."}
+          actionLabel={orders.length === 0 ? "Browse Marketplace" : undefined}
+          actionHref={orders.length === 0 ? "/buyer/marketplace" : undefined}
         />
       ) : (
         <div className="space-y-3">
@@ -89,17 +114,17 @@ export default function BuyerOrdersPage() {
               <ElevatedCard className="hover:shadow-card-hover transition-shadow">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center shrink-0">
-                    <span className="text-sm font-bold text-muted">{order.material_name.charAt(0)}</span>
+                    <span className="text-sm font-bold text-muted">{order.listings.material_name.charAt(0)}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-heading text-sm truncate">{order.material_name}</p>
+                    <p className="font-semibold text-heading text-sm truncate">{order.listings.material_name}</p>
                     <p className="text-subtle text-xs">
-                      {order.supplier_name} · Qty: {order.quantity} · {new Date(order.created_at).toLocaleDateString("en-IN")}
+                      {getSupplierName(order)} · Qty: {order.quantity} · {new Date(order.created_at).toLocaleDateString("en-IN")}
                     </p>
                   </div>
                   <div className="text-right shrink-0 flex items-center gap-3">
                     <div>
-                      <p className="price-tag text-sm text-heading">{formatINR(order.total_price)}</p>
+                      <p className="price-tag text-sm text-heading">{formatINR(Number(order.total_price))}</p>
                       <StatusPill status={order.status} />
                     </div>
                     <Link

@@ -1,17 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/lib/toast-context";
+import { fetchApi } from "@/lib/api-client";
 import { formatINR } from "@/lib/format";
 import ElevatedCard from "@/components/shared/ElevatedCard";
 import EmptyState from "@/components/shared/EmptyState";
+import SkeletonLoader from "@/components/shared/SkeletonLoader";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Pencil, Trash2, X, Loader2, Package, AlertTriangle } from "lucide-react";
 
 interface Listing {
   id: string;
   material_name: string;
-  category: string;
+  category: string | null;
   stock_qty: number;
   unit: string;
   price_per_unit: number;
@@ -20,20 +22,29 @@ interface Listing {
   fair_price_max?: number;
 }
 
-const demoListings: Listing[] = [
-  { id: "l-1", material_name: "Portland Cement (OPC 53)", category: "Cement", stock_qty: 500, unit: "bags", price_per_unit: 370, is_flagged_high: false },
-  { id: "l-2", material_name: "TMT Steel Bars (12mm)", category: "Steel", stock_qty: 240, unit: "kg", price_per_unit: 620, is_flagged_high: true, fair_price_min: 480, fair_price_max: 560 },
-  { id: "l-3", material_name: "River Sand (Fine)", category: "Sand", stock_qty: 1000, unit: "cft", price_per_unit: 70, is_flagged_high: false },
-  { id: "l-4", material_name: "Red Clay Bricks (Standard)", category: "Bricks", stock_qty: 0, unit: "pcs", price_per_unit: 8, is_flagged_high: false },
-];
-
 export default function SupplierListingsPage() {
-  const [listings, setListings] = useState(demoListings);
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ material_name: "", category: "", stock_qty: "", unit: "kg", price_per_unit: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { showToast } = useToast();
+
+  const loadListings = useCallback(async () => {
+    try {
+      const data = await fetchApi<Listing[]>("/listings/mine");
+      setListings(data);
+    } catch (err: any) {
+      showToast(err.message || "Failed to load listings", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [showToast]);
+
+  useEffect(() => {
+    loadListings();
+  }, [loadListings]);
 
   const openNewModal = () => {
     setFormData({ material_name: "", category: "", stock_qty: "", unit: "kg", price_per_unit: "" });
@@ -44,10 +55,10 @@ export default function SupplierListingsPage() {
   const openEditModal = (listing: Listing) => {
     setFormData({
       material_name: listing.material_name,
-      category: listing.category,
-      stock_qty: listing.stock_qty.toString(),
+      category: listing.category || "",
+      stock_qty: String(listing.stock_qty),
       unit: listing.unit,
-      price_per_unit: listing.price_per_unit.toString(),
+      price_per_unit: String(listing.price_per_unit),
     });
     setEditingId(listing.id);
     setIsModalOpen(true);
@@ -56,41 +67,64 @@ export default function SupplierListingsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    await new Promise(r => setTimeout(r, 800));
 
-    if (editingId) {
-      setListings(prev => prev.map(l => l.id === editingId ? {
-        ...l,
-        material_name: formData.material_name,
-        category: formData.category,
-        stock_qty: Number(formData.stock_qty),
-        unit: formData.unit,
-        price_per_unit: Number(formData.price_per_unit),
-      } : l));
-      showToast("Listing updated successfully", "success");
-    } else {
-      const newListing: Listing = {
-        id: `l-${Date.now()}`,
-        material_name: formData.material_name,
-        category: formData.category,
-        stock_qty: Number(formData.stock_qty),
-        unit: formData.unit,
-        price_per_unit: Number(formData.price_per_unit),
-        is_flagged_high: false,
-      };
-      setListings(prev => [newListing, ...prev]);
-      showToast("Listing created successfully", "success");
+    try {
+      if (editingId) {
+        await fetchApi(`/listings/${editingId}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            material_name: formData.material_name,
+            category: formData.category,
+            stock_qty: Number(formData.stock_qty),
+            unit: formData.unit,
+            price_per_unit: Number(formData.price_per_unit),
+          }),
+        });
+        showToast("Listing updated successfully", "success");
+      } else {
+        await fetchApi("/listings", {
+          method: "POST",
+          body: JSON.stringify({
+            material_name: formData.material_name,
+            category: formData.category,
+            stock_qty: Number(formData.stock_qty),
+            unit: formData.unit,
+            price_per_unit: Number(formData.price_per_unit),
+          }),
+        });
+        showToast("Listing created successfully", "success");
+      }
+
+      setIsModalOpen(false);
+      await loadListings();
+    } catch (err: any) {
+      showToast(err.message || "Failed to save listing", "error");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSubmitting(false);
-    setIsModalOpen(false);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     const listing = listings.find(l => l.id === id);
-    setListings(prev => prev.filter(l => l.id !== id));
-    showToast(`${listing?.material_name} deleted`, "info");
+    try {
+      await fetchApi(`/listings/${id}`, { method: "DELETE" });
+      setListings(prev => prev.filter(l => l.id !== id));
+      showToast(`${listing?.material_name} deleted`, "info");
+    } catch (err: any) {
+      showToast(err.message || "Failed to delete listing", "error");
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div id="supplier-listings">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="font-jakarta font-bold text-heading text-2xl">My Listings</h1>
+        </div>
+        <SkeletonLoader count={4} type="row" />
+      </div>
+    );
+  }
 
   return (
     <div id="supplier-listings">
@@ -142,14 +176,14 @@ export default function SupplierListingsPage() {
                             Price Flagged
                           </span>
                         )}
-                        {listing.stock_qty === 0 && (
+                        {Number(listing.stock_qty) === 0 && (
                           <span className="px-2 py-0.5 rounded-full bg-red-50 text-red-500 text-[10px] font-bold">Out of Stock</span>
                         )}
                       </div>
-                      <p className="text-subtle text-xs">{listing.category} · {listing.stock_qty.toLocaleString("en-IN")} {listing.unit}</p>
+                      <p className="text-subtle text-xs">{listing.category} · {Number(listing.stock_qty).toLocaleString("en-IN")} {listing.unit}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="price-tag text-lg text-heading">{formatINR(listing.price_per_unit)}</p>
+                      <p className="price-tag text-lg text-heading">{formatINR(Number(listing.price_per_unit))}</p>
                       <p className="text-subtle text-xs">per {listing.unit}</p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">

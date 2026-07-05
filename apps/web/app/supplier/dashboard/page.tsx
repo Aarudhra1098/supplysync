@@ -1,36 +1,93 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/app/providers";
+import { fetchApi } from "@/lib/api-client";
 import { formatINR } from "@/lib/format";
 import ElevatedCard from "@/components/shared/ElevatedCard";
 import StatusPill from "@/components/shared/StatusPill";
 import EmptyState from "@/components/shared/EmptyState";
+import SkeletonLoader from "@/components/shared/SkeletonLoader";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Package, ClipboardList, AlertTriangle, ArrowRight, Plus } from "lucide-react";
 
-// Demo data
-const demoStats = {
-  activeListings: 8,
-  incomingOrders: 3,
-  pricingAlerts: 2,
-};
+interface Listing {
+  id: string;
+  material_name: string;
+  is_flagged_high: boolean;
+}
 
-const demoRecentOrders = [
-  { id: "o-1", buyer_name: "Ravi Constructions", material_name: "Portland Cement (OPC 53)", quantity: 50, total_price: 18500, status: "pending" as const, created_at: "2026-07-04T08:00:00Z" },
-  { id: "o-2", buyer_name: "Krishna Builders", material_name: "TMT Steel Bars (12mm)", quantity: 30, total_price: 18600, status: "confirmed" as const, created_at: "2026-07-03T14:00:00Z" },
-  { id: "o-3", buyer_name: "Hyderabad Projects", material_name: "River Sand (Fine)", quantity: 500, total_price: 35000, status: "in_transit" as const, created_at: "2026-07-02T10:00:00Z" },
-];
+interface Order {
+  id: string;
+  quantity: number;
+  total_price: number;
+  status: string;
+  created_at: string;
+  listings: {
+    material_name: string;
+    unit: string;
+  };
+  users_buyer: {
+    display_name: string | null;
+    business_name: string | null;
+  };
+}
 
 export default function SupplierDashboard() {
   const { user } = useAuth();
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadData = useCallback(async () => {
+    try {
+      const [listingsData, ordersData] = await Promise.all([
+        fetchApi<Listing[]>("/listings/mine"),
+        fetchApi<Order[]>("/orders/mine"),
+      ]);
+      setListings(listingsData);
+      setOrders(ordersData);
+    } catch (err: any) {
+      console.error("Failed to load dashboard data:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const activeListingsCount = listings.length;
+  const incomingOrdersCount = orders.filter(o => ["pending", "confirmed", "in_transit"].includes(o.status)).length;
+  const pricingAlertsCount = listings.filter(l => l.is_flagged_high).length;
+  const recentOrders = orders.slice(0, 3);
 
   const statCards = [
-    { label: "Active Listings", value: demoStats.activeListings, icon: Package, color: "text-supplier", bg: "bg-supplier-soft", href: "/supplier/listings" },
-    { label: "Incoming Orders", value: demoStats.incomingOrders, icon: ClipboardList, color: "text-blue-500", bg: "bg-blue-50", href: "/supplier/orders-incoming" },
-    { label: "Pricing Alerts", value: demoStats.pricingAlerts, icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-50", href: "/supplier/pricing-alerts" },
+    { label: "Active Listings", value: activeListingsCount, icon: Package, color: "text-supplier", bg: "bg-supplier-soft", href: "/supplier/listings" },
+    { label: "Incoming Orders", value: incomingOrdersCount, icon: ClipboardList, color: "text-blue-500", bg: "bg-blue-50", href: "/supplier/orders-incoming" },
+    { label: "Pricing Alerts", value: pricingAlertsCount, icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-50", href: "/supplier/pricing-alerts" },
   ];
+
+  const getBuyerName = (order: Order) =>
+    order.users_buyer?.business_name || order.users_buyer?.display_name || "Unknown Buyer";
+
+  if (isLoading) {
+    return (
+      <div id="supplier-dashboard">
+        <div className="mb-6">
+          <h1 className="font-jakarta font-bold text-heading text-2xl mb-1">
+            Welcome back, {user?.displayName?.split(" ")[0] || "Supplier"} 👋
+          </h1>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <SkeletonLoader count={3} type="stat" />
+        </div>
+        <SkeletonLoader count={3} type="row" />
+      </div>
+    );
+  }
 
   return (
     <div id="supplier-dashboard">
@@ -85,7 +142,7 @@ export default function SupplierDashboard() {
           <Link href="/supplier/orders-incoming" className="text-sm text-supplier font-medium hover:underline">View All</Link>
         </div>
 
-        {demoRecentOrders.length === 0 ? (
+        {recentOrders.length === 0 ? (
           <EmptyState
             icon={ClipboardList}
             title="No incoming orders yet"
@@ -93,18 +150,18 @@ export default function SupplierDashboard() {
           />
         ) : (
           <div className="space-y-3">
-            {demoRecentOrders.map(order => (
+            {recentOrders.map(order => (
               <ElevatedCard key={order.id}>
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-xl bg-supplier-soft flex items-center justify-center shrink-0">
-                    <span className="text-sm font-bold text-supplier">{order.buyer_name.charAt(0)}</span>
+                    <span className="text-sm font-bold text-supplier">{getBuyerName(order).charAt(0)}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-heading text-sm truncate">{order.material_name}</p>
-                    <p className="text-subtle text-xs">{order.buyer_name} · Qty: {order.quantity}</p>
+                    <p className="font-semibold text-heading text-sm truncate">{order.listings.material_name}</p>
+                    <p className="text-subtle text-xs">{getBuyerName(order)} · Qty: {order.quantity}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="price-tag text-sm text-heading">{formatINR(order.total_price)}</p>
+                    <p className="price-tag text-sm text-heading">{formatINR(Number(order.total_price))}</p>
                     <StatusPill status={order.status} />
                   </div>
                 </div>

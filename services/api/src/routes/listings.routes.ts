@@ -42,6 +42,57 @@ router.get('/mine', requireAuth, requireSupplier, async (req: Request, res: Resp
   }
 });
 
+// GET /api/listings/browse — public-ish listing feed for buyer marketplace (no geo filter)
+router.get('/browse', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const search = (req.query.search as string) || '';
+    const category = (req.query.category as string) || '';
+
+    const whereClause: any = {};
+    if (search) {
+      whereClause.material_name = { contains: search, mode: 'insensitive' };
+    }
+    if (category) {
+      whereClause.category = category;
+    }
+
+    const listings = await prisma.listings.findMany({
+      where: whereClause,
+      include: {
+        users: {
+          select: {
+            id: true,
+            display_name: true,
+            business_name: true,
+            trust_score: true,
+          },
+        },
+      },
+      orderBy: { created_at: 'desc' },
+    });
+
+    // Flatten supplier info for frontend convenience
+    const result = listings.map((l) => ({
+      id: l.id,
+      supplier_id: l.supplier_id,
+      supplier_name: l.users.business_name || l.users.display_name || 'Unknown Supplier',
+      material_name: l.material_name,
+      category: l.category,
+      stock_qty: l.stock_qty,
+      unit: l.unit,
+      price_per_unit: l.price_per_unit,
+      is_flagged_high: l.is_flagged_high,
+      trust_score: l.users.trust_score,
+      created_at: l.created_at,
+    }));
+
+    res.json(successResponse(result));
+  } catch (error) {
+    console.error('Browse Listings Error:', error);
+    res.status(500).json(errorResponse('INTERNAL_SERVER_ERROR', 'Failed to browse listings'));
+  }
+});
+
 // POST /api/listings
 router.post('/', requireAuth, requireSupplier, async (req: Request, res: Response) => {
   try {
@@ -75,7 +126,7 @@ router.patch('/:id', requireAuth, requireSupplier, async (req: Request, res: Res
   try {
     const dbUser = (req as any).dbUser;
     const { id } = req.params;
-    const { stock_qty, price_per_unit, is_flagged_high } = req.body;
+    const { material_name, category, stock_qty, unit, price_per_unit, is_flagged_high } = req.body;
     
     // Ensure the listing belongs to the supplier
     const existing = await prisma.listings.findUnique({
@@ -95,7 +146,10 @@ router.patch('/:id', requireAuth, requireSupplier, async (req: Request, res: Res
     const listing = await prisma.listings.update({
       where: { id },
       data: {
+        material_name: material_name !== undefined ? material_name : undefined,
+        category: category !== undefined ? category : undefined,
         stock_qty: stock_qty !== undefined ? stock_qty : undefined,
+        unit: unit !== undefined ? unit : undefined,
         price_per_unit: price_per_unit !== undefined ? price_per_unit : undefined,
         is_flagged_high: is_flagged_high !== undefined ? is_flagged_high : undefined,
         updated_at: new Date(),
@@ -169,6 +223,31 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Listings Search Error:', error);
     res.status(500).json(errorResponse('INTERNAL_SERVER_ERROR', 'Failed to search listings'));
+  }
+});
+
+// DELETE /api/listings/:id
+router.delete('/:id', requireAuth, requireSupplier, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const dbUser = (req as any).dbUser;
+    const { id } = req.params;
+
+    const existing = await prisma.listings.findUnique({ where: { id } });
+
+    if (!existing) {
+      res.status(404).json(errorResponse('NOT_FOUND', 'Listing not found'));
+      return;
+    }
+
+    if (existing.supplier_id !== dbUser.id) {
+      res.status(403).json(errorResponse('FORBIDDEN', 'You do not own this listing'));
+      return;
+    }
+
+    await prisma.listings.delete({ where: { id } });
+    res.json(successResponse({ deleted: true }));
+  } catch (error) {
+    res.status(500).json(errorResponse('INTERNAL_SERVER_ERROR', 'Failed to delete listing'));
   }
 });
 

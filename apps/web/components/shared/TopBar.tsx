@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/app/providers";
 import { Bell } from "lucide-react";
 
@@ -11,12 +12,18 @@ interface TopBarProps {
 
 export default function TopBar({ showSearch, onSearchClick }: TopBarProps) {
   const { user } = useAuth();
+  const pathname = usePathname();
+
+  // Determine dashboard link based on current route context
+  const dashboardHref = pathname.startsWith("/supplier")
+    ? "/supplier/dashboard"
+    : "/buyer/dashboard";
 
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100" id="top-bar">
       <div className="max-w-7xl mx-auto flex items-center justify-between px-6 h-16">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5">
+        <Link href={dashboardHref} className="flex items-center gap-2.5">
           <div className="w-8 h-8 bg-gradient-to-br from-buyer to-teal-400 rounded-lg flex items-center justify-center">
             <span className="text-white font-bold text-sm">S</span>
           </div>

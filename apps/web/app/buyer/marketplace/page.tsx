@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useCart } from "@/lib/cart-context";
 import { useToast } from "@/lib/toast-context";
+import { fetchApi } from "@/lib/api-client";
 import ProductBlock from "@/components/shared/ProductBlock";
 import FilterDrawer from "@/components/shared/FilterDrawer";
 import SkeletonLoader from "@/components/shared/SkeletonLoader";
@@ -15,7 +16,7 @@ interface Listing {
   supplier_id: string;
   supplier_name: string;
   material_name: string;
-  category: string;
+  category: string | null;
   stock_qty: number;
   unit: string;
   price_per_unit: number;
@@ -23,21 +24,9 @@ interface Listing {
   is_flagged_high: boolean;
 }
 
-// Demo listings for UI preview
-const demoListings: Listing[] = [
-  { id: "l-1", supplier_id: "s-1", supplier_name: "Shree Industries", material_name: "Portland Cement (OPC 53)", category: "Cement", stock_qty: 500, unit: "bags", price_per_unit: 370, image_url: "", is_flagged_high: false },
-  { id: "l-2", supplier_id: "s-2", supplier_name: "Vizag Steel Traders", material_name: "TMT Steel Bars (12mm)", category: "Steel", stock_qty: 240, unit: "kg", price_per_unit: 620, image_url: "", is_flagged_high: false },
-  { id: "l-3", supplier_id: "s-3", supplier_name: "Godavari Sand Works", material_name: "River Sand (Fine)", category: "Sand", stock_qty: 1000, unit: "cft", price_per_unit: 70, image_url: "", is_flagged_high: false },
-  { id: "l-4", supplier_id: "s-4", supplier_name: "Lakshmi Bricks", material_name: "Red Clay Bricks (Standard)", category: "Bricks", stock_qty: 5000, unit: "pcs", price_per_unit: 8, image_url: "", is_flagged_high: false },
-  { id: "l-5", supplier_id: "s-1", supplier_name: "Shree Industries", material_name: "PPC Cement (Pozzolana)", category: "Cement", stock_qty: 12, unit: "bags", price_per_unit: 350, image_url: "", is_flagged_high: false },
-  { id: "l-6", supplier_id: "s-5", supplier_name: "Hyderabad Paints Co.", material_name: "Exterior Emulsion Paint (White)", category: "Paints", stock_qty: 0, unit: "litres", price_per_unit: 450, image_url: "", is_flagged_high: false },
-  { id: "l-7", supplier_id: "s-6", supplier_name: "Southern Timber Works", material_name: "Teak Wood Plank (6ft)", category: "Timber", stock_qty: 80, unit: "pcs", price_per_unit: 2200, image_url: "", is_flagged_high: false },
-  { id: "l-8", supplier_id: "s-7", supplier_name: "Deccan Aggregates", material_name: "Crushed Stone Aggregate (20mm)", category: "Sand", stock_qty: 3000, unit: "cft", price_per_unit: 45, image_url: "", is_flagged_high: false },
-];
-
-const allCategories = Array.from(new Set(demoListings.map(l => l.category)));
-
 export default function MarketplacePage() {
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -46,15 +35,34 @@ export default function MarketplacePage() {
   const { addItem } = useCart();
   const { showToast } = useToast();
 
+  const loadListings = useCallback(async () => {
+    try {
+      const data = await fetchApi<Listing[]>("/listings/browse");
+      setListings(data);
+    } catch (err: any) {
+      console.error("Failed to load listings:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadListings();
+  }, [loadListings]);
+
+  const allCategories = useMemo(() => {
+    return Array.from(new Set(listings.map(l => l.category).filter(Boolean))) as string[];
+  }, [listings]);
+
   // Filter results
   const filteredListings = useMemo(() => {
-    return demoListings.filter(listing => {
+    return listings.filter(listing => {
       const matchesSearch = !searchQuery || listing.material_name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = !appliedFilters.category || listing.category === appliedFilters.category;
-      const matchesPrice = listing.price_per_unit >= appliedFilters.priceRange[0] && listing.price_per_unit <= appliedFilters.priceRange[1];
+      const matchesPrice = Number(listing.price_per_unit) >= appliedFilters.priceRange[0] && Number(listing.price_per_unit) <= appliedFilters.priceRange[1];
       return matchesSearch && matchesCategory && matchesPrice;
     });
-  }, [searchQuery, appliedFilters]);
+  }, [listings, searchQuery, appliedFilters]);
 
   const handleAddToCart = (listing: Listing) => {
     addItem({
@@ -62,9 +70,9 @@ export default function MarketplacePage() {
       materialName: listing.material_name,
       supplierName: listing.supplier_name,
       supplierId: listing.supplier_id,
-      unitPrice: listing.price_per_unit,
+      unitPrice: Number(listing.price_per_unit),
       unit: listing.unit,
-      availableStock: listing.stock_qty,
+      availableStock: Number(listing.stock_qty),
     });
     showToast(`${listing.material_name} added to cart`, "success");
   };
@@ -78,6 +86,20 @@ export default function MarketplacePage() {
     setPriceRange([0, 10000]);
     setAppliedFilters({ category: "", priceRange: [0, 10000] });
   };
+
+  if (isLoading) {
+    return (
+      <div id="buyer-marketplace">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="search-bar flex-1">
+            <Search className="w-5 h-5 text-subtle shrink-0" />
+            <input type="text" placeholder="Search materials..." disabled />
+          </div>
+        </div>
+        <SkeletonLoader count={8} type="card" />
+      </div>
+    );
+  }
 
   return (
     <div id="buyer-marketplace">
@@ -111,10 +133,10 @@ export default function MarketplacePage() {
       {filteredListings.length === 0 ? (
         <EmptyState
           icon={Package}
-          title="No products match your search"
-          description="Try adjusting your search or filters to find what you're looking for."
-          actionLabel="Clear Filters"
-          onAction={handleClearFilters}
+          title="No products available"
+          description={listings.length === 0 ? "No suppliers have listed products yet. Check back soon!" : "Try adjusting your search or filters to find what you're looking for."}
+          actionLabel={listings.length > 0 ? "Clear Filters" : undefined}
+          onAction={listings.length > 0 ? handleClearFilters : undefined}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -129,9 +151,9 @@ export default function MarketplacePage() {
                 id={listing.id}
                 materialName={listing.material_name}
                 supplierName={listing.supplier_name}
-                stockQty={listing.stock_qty}
+                stockQty={Number(listing.stock_qty)}
                 unit={listing.unit}
-                pricePerUnit={listing.price_per_unit}
+                pricePerUnit={Number(listing.price_per_unit)}
                 imageUrl={listing.image_url}
                 onAddToCart={() => handleAddToCart(listing)}
               />

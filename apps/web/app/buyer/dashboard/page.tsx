@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/app/providers";
 import { fetchApi } from "@/lib/api-client";
 import { formatINR } from "@/lib/format";
@@ -15,59 +15,49 @@ import { Package, ArrowRight, ShoppingBag, Clock } from "lucide-react";
 interface Order {
   id: string;
   listing_id: string;
-  material_name: string;
-  supplier_name: string;
   quantity: number;
   total_price: number;
   status: "pending" | "confirmed" | "in_transit" | "delivered" | "cancelled";
   created_at: string;
+  listings: {
+    material_name: string;
+    category: string | null;
+    unit: string;
+  };
+  users_supplier: {
+    display_name: string | null;
+    business_name: string | null;
+  };
 }
-
-// Demo data for UI preview
-const demoOrders: Order[] = [
-  {
-    id: "ord-001",
-    listing_id: "l-1",
-    material_name: "Portland Cement (OPC 53)",
-    supplier_name: "Shree Industries",
-    quantity: 50,
-    total_price: 18500,
-    status: "in_transit",
-    created_at: "2026-07-02T10:00:00Z",
-  },
-  {
-    id: "ord-002",
-    listing_id: "l-2",
-    material_name: "TMT Steel Bars (12mm)",
-    supplier_name: "Vizag Steel Traders",
-    quantity: 100,
-    total_price: 62000,
-    status: "delivered",
-    created_at: "2026-06-28T09:00:00Z",
-  },
-  {
-    id: "ord-003",
-    listing_id: "l-3",
-    material_name: "River Sand (Fine)",
-    supplier_name: "Godavari Sand Works",
-    quantity: 200,
-    total_price: 14000,
-    status: "delivered",
-    created_at: "2026-06-20T11:00:00Z",
-  },
-];
 
 export default function BuyerDashboard() {
   const { user } = useAuth();
-  const [orders, setOrders] = useState<Order[]>(demoOrders);
-  const [isLoading, setIsLoading] = useState(false);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Derive active vs past orders
+  const loadOrders = useCallback(async () => {
+    try {
+      const data = await fetchApi<Order[]>("/orders/mine");
+      setOrders(data);
+    } catch (err: any) {
+      console.error("Failed to load orders:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
+
   const activeOrder = orders.find(o => ["pending", "confirmed", "in_transit"].includes(o.status)) || null;
   const pastOrders = orders.filter(o => ["delivered", "cancelled"].includes(o.status));
 
   const statusSteps = ["pending", "confirmed", "in_transit", "delivered"];
   const activeStepIndex = activeOrder ? statusSteps.indexOf(activeOrder.status) : -1;
+
+  const getSupplierName = (order: Order) =>
+    order.users_supplier?.business_name || order.users_supplier?.display_name || "Unknown Supplier";
 
   return (
     <div className="space-y-6" id="buyer-dashboard">
@@ -88,8 +78,8 @@ export default function BuyerDashboard() {
             <div className="flex items-start justify-between mb-4">
               <div>
                 <p className="text-xs font-semibold text-buyer uppercase tracking-wider mb-1">Active Order</p>
-                <h3 className="font-jakarta font-bold text-heading text-lg">{activeOrder.material_name}</h3>
-                <p className="text-muted text-sm">{activeOrder.supplier_name}</p>
+                <h3 className="font-jakarta font-bold text-heading text-lg">{activeOrder.listings.material_name}</h3>
+                <p className="text-muted text-sm">{getSupplierName(activeOrder)}</p>
               </div>
               <StatusPill status={activeOrder.status} />
             </div>
@@ -148,7 +138,9 @@ export default function BuyerDashboard() {
           Previous Orders
         </h2>
 
-        {orders.length === 0 ? (
+        {isLoading ? (
+          <SkeletonLoader count={3} type="row" />
+        ) : orders.length === 0 ? (
           <EmptyState
             icon={ShoppingBag}
             title="You haven't ordered yet"
@@ -167,14 +159,14 @@ export default function BuyerDashboard() {
                 <ElevatedCard className="hover:shadow-card-hover transition-shadow cursor-pointer">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center shrink-0">
-                      <span className="text-sm font-bold text-muted">{order.material_name.charAt(0)}</span>
+                      <span className="text-sm font-bold text-muted">{order.listings.material_name.charAt(0)}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-heading text-sm truncate">{order.material_name}</p>
-                      <p className="text-subtle text-xs">{order.supplier_name} · {new Date(order.created_at).toLocaleDateString("en-IN")}</p>
+                      <p className="font-semibold text-heading text-sm truncate">{order.listings.material_name}</p>
+                      <p className="text-subtle text-xs">{getSupplierName(order)} · {new Date(order.created_at).toLocaleDateString("en-IN")}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="price-tag text-sm text-heading">{formatINR(order.total_price)}</p>
+                      <p className="price-tag text-sm text-heading">{formatINR(Number(order.total_price))}</p>
                       <StatusPill status={order.status} />
                     </div>
                   </div>
