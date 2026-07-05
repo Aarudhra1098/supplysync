@@ -1,18 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { fetchApi } from "@/lib/api-client";
 import { ShoppingBag, Warehouse, Loader2, MapPin, Building2, User, Phone } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
-declare global {
-  interface Window {
-    google: any;
-    initSignupMap: () => void;
-  }
-}
+
 
 export default function SelectRolePage() {
   const [selectedRole, setSelectedRole] = useState<"buyer" | "supplier" | null>(null);
@@ -29,142 +24,8 @@ export default function SelectRolePage() {
     lng: 0,
   });
 
-  // Google Maps refs
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const markerRef = useRef<any>(null);
-  const autocompleteRef = useRef<any>(null);
+  // Address input ref only
   const addressInputRef = useRef<HTMLInputElement>(null);
-
-  // Initialize Google Maps when step 2 is shown
-  useEffect(() => {
-    if (step !== 2) return;
-
-    const initMap = () => {
-      if (!mapRef.current || !window.google) return;
-
-      // Default location (India center)
-      const defaultPos = { lat: 20.5937, lng: 78.9629 };
-
-      const map = new window.google.maps.Map(mapRef.current, {
-        center: defaultPos,
-        zoom: 5,
-        disableDefaultUI: true,
-        zoomControl: true,
-        styles: [
-          { featureType: "poi", stylers: [{ visibility: "off" }] },
-          { featureType: "transit", stylers: [{ visibility: "off" }] },
-        ],
-      });
-      mapInstanceRef.current = map;
-
-      const marker = new window.google.maps.Marker({
-        map,
-        draggable: true,
-        animation: window.google.maps.Animation.DROP,
-      });
-      markerRef.current = marker;
-
-      // Try to get user's current location
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
-            map.setCenter(pos);
-            map.setZoom(15);
-            marker.setPosition(pos);
-            setForm(prev => ({ ...prev, lat: pos.lat, lng: pos.lng }));
-
-            // Reverse geocode to get address
-            const geocoder = new window.google.maps.Geocoder();
-            geocoder.geocode({ location: pos }, (results: any, status: any) => {
-              if (status === "OK" && results[0]) {
-                setForm(prev => ({ ...prev, address: results[0].formatted_address }));
-                if (addressInputRef.current) {
-                  addressInputRef.current.value = results[0].formatted_address;
-                }
-              }
-            });
-          },
-          () => { /* Permission denied — keep default */ }
-        );
-      }
-
-      // Drag marker to update address
-      marker.addListener("dragend", () => {
-        const pos = marker.getPosition();
-        const lat = pos.lat();
-        const lng = pos.lng();
-        setForm(prev => ({ ...prev, lat, lng }));
-
-        const geocoder = new window.google.maps.Geocoder();
-        geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
-          if (status === "OK" && results[0]) {
-            setForm(prev => ({ ...prev, address: results[0].formatted_address }));
-            if (addressInputRef.current) {
-              addressInputRef.current.value = results[0].formatted_address;
-            }
-          }
-        });
-      });
-
-      // Click map to move marker
-      map.addListener("click", (e: any) => {
-        const lat = e.latLng.lat();
-        const lng = e.latLng.lng();
-        marker.setPosition(e.latLng);
-        setForm(prev => ({ ...prev, lat, lng }));
-
-        const geocoder = new window.google.maps.Geocoder();
-        geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
-          if (status === "OK" && results[0]) {
-            setForm(prev => ({ ...prev, address: results[0].formatted_address }));
-            if (addressInputRef.current) {
-              addressInputRef.current.value = results[0].formatted_address;
-            }
-          }
-        });
-      });
-
-      // Autocomplete
-      if (addressInputRef.current) {
-        const autocomplete = new window.google.maps.places.Autocomplete(addressInputRef.current, {
-          componentRestrictions: { country: "in" },
-          fields: ["formatted_address", "geometry"],
-        });
-        autocompleteRef.current = autocomplete;
-
-        autocomplete.addListener("place_changed", () => {
-          const place = autocomplete.getPlace();
-          if (place.geometry?.location) {
-            const lat = place.geometry.location.lat();
-            const lng = place.geometry.location.lng();
-            map.setCenter(place.geometry.location);
-            map.setZoom(16);
-            marker.setPosition(place.geometry.location);
-            setForm(prev => ({
-              ...prev,
-              address: place.formatted_address || "",
-              lat,
-              lng,
-            }));
-          }
-        });
-      }
-    };
-
-    // Load Google Maps script if not already loaded
-    if (window.google?.maps) {
-      initMap();
-    } else {
-      window.initSignupMap = initMap;
-      const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""}&libraries=places&callback=initSignupMap`;
-      script.async = true;
-      script.defer = true;
-      document.head.appendChild(script);
-    }
-  }, [step]);
 
   const handleRoleSelect = (role: "buyer" | "supplier") => {
     setSelectedRole(role);
@@ -354,20 +215,12 @@ export default function SelectRolePage() {
                     ref={addressInputRef}
                     type="text"
                     required
-                    placeholder="Search for your address..."
+                    placeholder="Enter your full address"
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 text-heading text-sm placeholder:text-subtle focus:border-buyer focus:ring-2 focus:ring-buyer-ring outline-none transition-all mb-3"
                     id="signup-address"
                     onChange={e => setForm({ ...form, address: e.target.value })}
                   />
-                  {/* Google Maps embed */}
-                  <div
-                    ref={mapRef}
-                    className="w-full h-56 rounded-xl border border-gray-200 overflow-hidden bg-gray-100"
-                    id="signup-map"
-                  />
-                  <p className="text-subtle text-xs mt-2">
-                    📍 Click on the map or drag the pin to set your exact location
-                  </p>
+
                 </div>
 
                 {/* Submit */}

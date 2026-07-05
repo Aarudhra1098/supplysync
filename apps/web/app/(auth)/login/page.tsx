@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { signInWithGoogle, setupRecaptcha, sendOtp, verifyOtp } from "@/lib/firebase-client";
 import { fetchApi } from "@/lib/api-client";
+import { useAuth } from "@/app/providers";
 import { Loader2, Phone, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { RecaptchaVerifier, ConfirmationResult } from "firebase/auth";
@@ -11,6 +12,7 @@ import { RecaptchaVerifier, ConfirmationResult } from "firebase/auth";
 type AuthView = "main" | "phone-input" | "otp-verify";
 
 export default function LoginPage() {
+  const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [error, setError] = useState<string | null>(null);

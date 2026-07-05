@@ -85,7 +85,7 @@ export async function runDemandForecast(req: Request, res: Response): Promise<vo
       }
 
       // Compute average quantity
-      const totalQty = matOrders.reduce((sum, o) => sum + Number(o.quantity), 0);
+      const totalQty = matOrders.reduce((sum: number, o: any) => sum + Number(o.quantity), 0);
       const avgQty = totalQty / matOrders.length;
 
       // Compute average re-order interval (in days)

@@ -16,6 +16,7 @@ interface TopBarProps {
 
 export default function TopBar({ showSearch, onSearchClick }: TopBarProps) {
   const { user } = useAuth();
+  const router = useRouter();
   const [profileOpen, setProfileOpen] = useState(false);
   const pathname = usePathname();
 
