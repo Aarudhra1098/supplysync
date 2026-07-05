@@ -29,7 +29,7 @@ router.post('/session', requireAuth, async (req: Request, res: Response): Promis
     res.json(successResponse(dbUser));
   } catch (error) {
     console.error('Session Error:', error);
-    res.status(500).json(errorResponse('INTERNAL_SERVER_ERROR', 'Failed to process session'));
+    res.status(500).json(errorResponse('INTERNAL_SERVER_ERROR', `Failed to process session: ${error instanceof Error ? error.message : String(error)}`));
   }
 });
 
