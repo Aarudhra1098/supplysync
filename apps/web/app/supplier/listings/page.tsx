@@ -211,19 +211,19 @@ export default function SupplierListingsPage() {
       {/* Add/Edit Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsModalOpen(false)}
-              className="fixed inset-0 bg-black/20 z-50"
-            />
+              className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center"
+            >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg mx-auto bg-white rounded-2xl shadow-2xl z-50 p-6"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg bg-white rounded-2xl shadow-2xl p-6"
               id="listing-modal"
             >
               <div className="flex items-center justify-between mb-5">
@@ -312,7 +312,7 @@ export default function SupplierListingsPage() {
                 </button>
               </form>
             </motion.div>
-          </>
+            </motion.div>
         )}
       </AnimatePresence>
     </div>
