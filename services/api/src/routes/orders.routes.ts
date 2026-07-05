@@ -92,7 +92,7 @@ router.post('/', requireAuth, async (req: Request, res: Response): Promise<void>
           listing_id: listing.id,
           quantity,
           total_price: totalPrice,
-          status: order_status.pending,
+          status: 'pending',
         }
       });
       
@@ -143,7 +143,7 @@ router.patch('/:id/status', requireAuth, async (req: Request, res: Response): Pr
     const updatedOrder = await prisma.orders.update({
       where: { id },
       data: {
-        status: status as order_status,
+        status: status as any,
         delivery_eta: delivery_eta ? new Date(delivery_eta) : undefined,
         delivered_at: status === 'delivered' ? new Date() : undefined,
       }
