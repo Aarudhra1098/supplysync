@@ -1,3 +1,4 @@
+import { Chatbot } from "@/components/ui/Chatbot";
 import type { Metadata } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
@@ -21,7 +22,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} ${jakarta.variable} font-sans antialiased bg-surface-base min-h-screen text-body dark:bg-slate-900 dark:text-slate-100 transition-colors`}>
+      <body 
+        <body className={inter.className}>
+  <Chatbot />  {/* <-- ADD THIS LINE */}
+  {children}
+</body>
+className={`${inter.variable} ${jakarta.variable} font-sans antialiased bg-surface-base min-h-screen text-body dark:bg-slate-900 dark:text-slate-100 transition-colors`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
